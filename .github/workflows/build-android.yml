@@ -29,6 +29,9 @@ jobs:
           java-version: '17'
           
       - name: Expo Prebuild
+        env:
+          CI: true
+          EXPO_NO_TELEMETRY: 1
         run: npx expo prebuild --platform android
         
       - name: Build APK
