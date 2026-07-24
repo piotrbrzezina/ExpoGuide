@@ -8,6 +8,9 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import android.speech.tts.UtteranceProgressListener
+import android.widget.SeekBar
+import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -34,6 +37,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var translator: Translator
     private var isTranslatorReady = false
 
+    private lateinit var llTtsControls: View
+    private lateinit var btnTtsPlayPause: Button
+    private lateinit var btnTtsStop: Button
+    private lateinit var btnTtsRewind: Button
+    private lateinit var btnTtsForward: Button
+    private lateinit var sbTtsSpeed: SeekBar
+
+    private var ttsSentences = listOf<String>()
+    private var currentSentenceIndex = 0
+    private var isPlayingTts = false
+    private var isPaused = false
+
     // Placeholder for API Key. W prawdziwej aplikacji uzyj bezpieczniejszego mechanizmu.
     private val GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
 
@@ -54,6 +69,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tvStatus = findViewById(R.id.tvStatus)
         tvTranslatedText = findViewById(R.id.tvTranslatedText)
         tvAiResponse = findViewById(R.id.tvAiResponse)
+
+        llTtsControls = findViewById(R.id.llTtsControls)
+        btnTtsPlayPause = findViewById(R.id.btnTtsPlayPause)
+        btnTtsStop = findViewById(R.id.btnTtsStop)
+        btnTtsRewind = findViewById(R.id.btnTtsRewind)
+        btnTtsForward = findViewById(R.id.btnTtsForward)
+        sbTtsSpeed = findViewById(R.id.sbTtsSpeed)
+
+        setupTtsControls()
 
         btnCapture.isEnabled = false
         
@@ -87,12 +111,118 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+        private fun setupTtsControls() {
+        btnTtsPlayPause.setOnClickListener {
+            if (isPlayingTts) {
+                if (isPaused) {
+                    resumeTts()
+                } else {
+                    pauseTts()
+                }
+            } else {
+                startReadingFrom(0)
+            }
+        }
+        btnTtsStop.setOnClickListener {
+            stopTts()
+            startReadingFrom(0) // Reset to beginning but don't play immediately
+            pauseTts() // To keep it paused
+        }
+        btnTtsRewind.setOnClickListener {
+            if (currentSentenceIndex > 0) {
+                currentSentenceIndex--
+                startReadingFrom(currentSentenceIndex)
+                if (isPaused) pauseTts()
+            }
+        }
+        btnTtsForward.setOnClickListener {
+            if (currentSentenceIndex < ttsSentences.size - 1) {
+                currentSentenceIndex++
+                startReadingFrom(currentSentenceIndex)
+                if (isPaused) pauseTts()
+            }
+        }
+        sbTtsSpeed.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val speed = progress / 100f
+                tts.setSpeechRate(if (speed < 0.1f) 0.1f else speed)
+                if (isPlayingTts && !isPaused) {
+                    startReadingFrom(currentSentenceIndex)
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+    }
+
+    private fun readTextWithControls(text: String) {
+        ttsSentences = text.split(Regex("(?<=[.!?])\\\\s+")).filter { it.isNotBlank() }
+        runOnUiThread {
+            llTtsControls.visibility = View.VISIBLE
+        }
+        startReadingFrom(0)
+    }
+
+    private fun startReadingFrom(index: Int) {
+        currentSentenceIndex = index
+        if (ttsSentences.isEmpty() || index >= ttsSentences.size) {
+            isPlayingTts = false
+            runOnUiThread { btnTtsPlayPause.text = "▶" }
+            return
+        }
+        isPlayingTts = true
+        isPaused = false
+        runOnUiThread { btnTtsPlayPause.text = "⏸" }
+        
+        tts.stop()
+        val textToSpeak = ttsSentences[index]
+        val params = Bundle()
+        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_$index")
+        tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "utterance_$index")
+    }
+
+    private fun pauseTts() {
+        isPaused = true
+        tts.stop()
+        runOnUiThread { btnTtsPlayPause.text = "▶" }
+    }
+
+    private fun resumeTts() {
+        isPaused = false
+        startReadingFrom(currentSentenceIndex)
+    }
+
+    private fun stopTts() {
+        isPlayingTts = false
+        isPaused = false
+        tts.stop()
+        runOnUiThread { btnTtsPlayPause.text = "▶" }
+    }
+
     override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
+                if (status == TextToSpeech.SUCCESS) {
             val result = tts.setLanguage(Locale("pl", "PL"))
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("TTS", "Język polski nie jest obsługiwany lub brakuje danych.")
             }
+            tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {
+                    if (isPlayingTts && !isPaused) {
+                        currentSentenceIndex++
+                        if (currentSentenceIndex < ttsSentences.size) {
+                            val textToSpeak = ttsSentences[currentSentenceIndex]
+                            val params = Bundle()
+                            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "utterance_$currentSentenceIndex")
+                            tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, params, "utterance_$currentSentenceIndex")
+                        } else {
+                            isPlayingTts = false
+                            runOnUiThread { btnTtsPlayPause.text = "▶" }
+                        }
+                    }
+                }
+                override fun onError(utteranceId: String?) {}
+            })
         }
     }
 
@@ -127,7 +257,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 tvTranslatedText.text = translatedText
                 
                 // Read text aloud
-                tts.speak(translatedText, TextToSpeech.QUEUE_FLUSH, null, "read_text")
+                readTextWithControls(translatedText)
                 
                 // Show AI button
                 btnAskAi.visibility = View.VISIBLE
@@ -159,7 +289,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 tvAiResponse.text = response.text
                 
                 // Read AI response aloud
-                tts.speak(response.text ?: "", TextToSpeech.QUEUE_FLUSH, null, "ai_response")
+                readTextWithControls(response.text ?: "")
             } catch (e: Exception) {
                 tvAiResponse.text = "Błąd AI: ${e.message}"
             } finally {

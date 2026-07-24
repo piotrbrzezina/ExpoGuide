@@ -34,6 +34,8 @@
             android:textSize="18sp"
             tools:text="Tutaj pojawi się przetłumaczony tekst..." />
 
+        <include layout="@layout/tts_controls" />
+
         <Button
             android:id="@+id/btnAskAi"
             android:layout_width="match_parent"
