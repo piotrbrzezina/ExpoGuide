@@ -11,10 +11,15 @@ import android.widget.Toast
 import android.speech.tts.UtteranceProgressListener
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
+import android.widget.Switch
+import android.content.Context
+import android.content.SharedPreferences
+import com.piotrbrzezina.expoguide.ai.AiRepository
+import com.piotrbrzezina.expoguide.ai.LocalLlmProvider
+import com.piotrbrzezina.expoguide.ai.FallbackAiProvider
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.google.ai.client.generativeai.GenerativeModel
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
@@ -29,9 +34,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var btnCapture: Button
     private lateinit var btnAskAi: Button
+    private lateinit var switchSkipLocalAi: Switch
     private lateinit var tvStatus: TextView
     private lateinit var tvTranslatedText: TextView
     private lateinit var tvAiResponse: TextView
+
+    private lateinit var aiRepository: AiRepository
+    private lateinit var sharedPrefs: SharedPreferences
 
     private lateinit var tts: TextToSpeech
     private lateinit var translator: Translator
@@ -66,9 +75,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         btnCapture = findViewById(R.id.btnCapture)
         btnAskAi = findViewById(R.id.btnAskAi)
+        switchSkipLocalAi = findViewById(R.id.switchSkipLocalAi)
         tvStatus = findViewById(R.id.tvStatus)
         tvTranslatedText = findViewById(R.id.tvTranslatedText)
         tvAiResponse = findViewById(R.id.tvAiResponse)
+
+        sharedPrefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        switchSkipLocalAi.isChecked = sharedPrefs.getBoolean("skip_local_ai", false)
+        switchSkipLocalAi.setOnCheckedChangeListener { _, isChecked ->
+            sharedPrefs.edit().putBoolean("skip_local_ai", isChecked).apply()
+        }
+
+        aiRepository = AiRepository(
+            localProvider = LocalLlmProvider(this),
+            fallbackProvider = FallbackAiProvider(GEMINI_API_KEY),
+            sharedPreferences = sharedPrefs
+        )
 
         llTtsControls = findViewById(R.id.llTtsControls)
         btnTtsPlayPause = findViewById(R.id.btnTtsPlayPause)
@@ -268,28 +290,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun askAiForTrivia(contextText: String) {
-        if (GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE") {
-            tvAiResponse.text = "Brak klucza API Gemini. Skonfiguruj klucz w kodzie (MainActivity.kt)."
+        if (GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE" && sharedPrefs.getBoolean("skip_local_ai", false)) {
+            tvAiResponse.text = "Brak klucza API Gemini dla fallbacku. Skonfiguruj klucz w kodzie (MainActivity.kt)."
             return
         }
 
         btnAskAi.isEnabled = false
         tvAiResponse.text = "AI myśli..."
 
-        val generativeModel = GenerativeModel(
-            modelName = "gemini-1.5-flash",
-            apiKey = GEMINI_API_KEY
-        )
-
         val prompt = "Oto tekst z tabliczki w muzeum:\n$contextText\n\nPodaj 3 najciekawsze, nietypowe fakty o tym eksponacie, których nie było na tabliczce."
 
         lifecycleScope.launch {
             try {
-                val response = generativeModel.generateContent(prompt)
-                tvAiResponse.text = response.text
+                val responseText = aiRepository.generateContent(prompt)
+                tvAiResponse.text = responseText
                 
                 // Read AI response aloud
-                readTextWithControls(response.text ?: "")
+                readTextWithControls(responseText)
             } catch (e: Exception) {
                 tvAiResponse.text = "Błąd AI: ${e.message}"
             } finally {

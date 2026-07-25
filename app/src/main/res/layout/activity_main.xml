@@ -36,6 +36,26 @@
 
         <include layout="@layout/tts_controls" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Pomiń lokalne AI (wymuś chmurę)"
+                android:textSize="16sp" />
+
+            <Switch
+                android:id="@+id/switchSkipLocalAi"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/btnAskAi"
             android:layout_width="match_parent"
