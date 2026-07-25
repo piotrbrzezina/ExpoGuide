@@ -27,6 +27,7 @@ import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -113,7 +114,24 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             .build()
         translator = Translation.getClient(options)
         
-        tvStatus.text = "Pobieranie modelu tłumaczenia..."
+        tvStatus.text = "Sprawdzanie modeli..."
+        
+        // Mock download local LLM
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val modelFile = java.io.File(filesDir, "llm_model.bin")
+            if (!modelFile.exists()) {
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    tvStatus.text = "Pobieranie lokalnego modelu LLM..."
+                }
+                // Mock delay
+                kotlinx.coroutines.delay(2000)
+                // In real app, download happens here
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    tvStatus.text = "Model LLM gotowy (mock)."
+                }
+            }
+        }
+        
         translator.downloadModelIfNeeded()
             .addOnSuccessListener {
                 isTranslatorReady = true
