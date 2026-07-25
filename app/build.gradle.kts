@@ -44,6 +44,9 @@ dependencies {
     // ML Kit Translation
     implementation("com.google.mlkit:translate:17.0.2")
     
+    // MediaPipe for local LLM
+    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+    
     // Generative AI (Gemini)
     implementation("com.google.ai.client.generativeai:generativeai:0.2.2")
     
