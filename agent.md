@@ -21,3 +21,7 @@ Dodano możliwość wyboru zdjęcia z galerii urządzenia, które przechodzi prz
 - Dodano funkcję `openGallery()` z logiką wyboru odpowiedniego launchera w zależności od dostępności Photo Pickera i wersji API
 - Dodano funkcję `loadBitmapFromUri(uri)` dekodującą URI na Bitmap (ImageDecoder API 28+ lub BitmapFactory jako fallback)
 - Przycisk `btnGallery` włączany/wyłączany razem z `btnCapture` po pobraniu modelu tłumaczenia
+
+---
+
+- Dodano panel administracyjny do pobierania modeli LLM i przycisk dostępu w głównym widoku.

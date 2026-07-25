@@ -1,6 +1,9 @@
 package com.piotrbrzezina.expoguide
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,21 +12,16 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.TextView
-import android.widget.Toast
-import android.content.Context
-import android.content.SharedPreferences
-import android.speech.tts.UtteranceProgressListener
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.Switch
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
-import com.piotrbrzezina.expoguide.ai.AiRepository
-import com.piotrbrzezina.expoguide.ai.FallbackAiProvider
-import com.piotrbrzezina.expoguide.ai.LocalLlmProvider
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -35,6 +33,9 @@ import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.piotrbrzezina.expoguide.ai.AiRepository
+import com.piotrbrzezina.expoguide.ai.FallbackAiProvider
+import com.piotrbrzezina.expoguide.ai.LocalLlmProvider
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var btnCapture: Button
     private lateinit var btnGallery: Button
     private lateinit var btnAskAi: Button
+    private lateinit var btnAdminPanel: Button
     private lateinit var switchSkipLocalAi: Switch
     private lateinit var tvStatus: TextView
     private lateinit var tvTranslatedText: TextView
@@ -106,6 +108,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         btnCapture = findViewById(R.id.btnCapture)
         btnGallery = findViewById(R.id.btnGallery)
         btnAskAi = findViewById(R.id.btnAskAi)
+        btnAdminPanel = findViewById(R.id.btnAdminPanel)
         switchSkipLocalAi = findViewById(R.id.switchSkipLocalAi)
         tvStatus = findViewById(R.id.tvStatus)
         tvTranslatedText = findViewById(R.id.tvTranslatedText)
@@ -185,9 +188,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         btnAskAi.setOnClickListener {
             askAiForTrivia(tvTranslatedText.text.toString())
         }
+
+        btnAdminPanel.setOnClickListener {
+            val intent = Intent(this, AdminActivity::class.java)
+            startActivity(intent)
+        }
     }
 
-        private fun setupTtsControls() {
+    private fun setupTtsControls() {
         btnTtsPlayPause.setOnClickListener {
             if (isPlayingTts) {
                 if (isPaused) {
@@ -276,7 +284,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onInit(status: Int) {
-                if (status == TextToSpeech.SUCCESS) {
+        if (status == TextToSpeech.SUCCESS) {
             val result = tts.setLanguage(Locale("pl", "PL"))
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("TTS", "Język polski nie jest obsługiwany lub brakuje danych.")
