@@ -1,0 +1,1 @@
+- Dodano panel administracyjny do pobierania modeli LLM i przycisk dostępu w głównym widoku.

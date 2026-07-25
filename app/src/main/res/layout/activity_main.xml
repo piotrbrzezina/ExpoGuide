@@ -57,6 +57,13 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/btnAdminPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Panel Administracyjny (Pobierz modele)" />
+
+        <Button
             android:id="@+id/btnAskAi"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

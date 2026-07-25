@@ -14,6 +14,7 @@ import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.Switch
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.Intent
 import com.piotrbrzezina.expoguide.ai.AiRepository
 import com.piotrbrzezina.expoguide.ai.LocalLlmProvider
 import com.piotrbrzezina.expoguide.ai.FallbackAiProvider
@@ -35,6 +36,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var btnCapture: Button
     private lateinit var btnAskAi: Button
+    private lateinit var btnAdminPanel: Button
     private lateinit var switchSkipLocalAi: Switch
     private lateinit var tvStatus: TextView
     private lateinit var tvTranslatedText: TextView
@@ -76,6 +78,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         btnCapture = findViewById(R.id.btnCapture)
         btnAskAi = findViewById(R.id.btnAskAi)
+        btnAdminPanel = findViewById(R.id.btnAdminPanel)
         switchSkipLocalAi = findViewById(R.id.switchSkipLocalAi)
         tvStatus = findViewById(R.id.tvStatus)
         tvTranslatedText = findViewById(R.id.tvTranslatedText)
@@ -116,22 +119,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         
         tvStatus.text = "Sprawdzanie modeli..."
         
-        // Mock download local LLM
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val modelFile = java.io.File(filesDir, "llm_model.bin")
-            if (!modelFile.exists()) {
-                withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    tvStatus.text = "Pobieranie lokalnego modelu LLM..."
-                }
-                // Mock delay
-                kotlinx.coroutines.delay(2000)
-                // In real app, download happens here
-                withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    tvStatus.text = "Model LLM gotowy (mock)."
-                }
-            }
-        }
-        
         translator.downloadModelIfNeeded()
             .addOnSuccessListener {
                 isTranslatorReady = true
@@ -148,6 +135,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         btnAskAi.setOnClickListener {
             askAiForTrivia(tvTranslatedText.text.toString())
+        }
+        
+        btnAdminPanel.setOnClickListener {
+            val intent = Intent(this, AdminActivity::class.java)
+            startActivity(intent)
         }
     }
 
