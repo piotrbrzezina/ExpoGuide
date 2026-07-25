@@ -1,1 +1,2 @@
 - Dodano panel administracyjny do pobierania modeli LLM i przycisk dostępu w głównym widoku.
+- Dodano panel administracyjny do zarządzania wieloma modelami językowymi LLM z funkcjami: pobieranie, wybór aktywnego i usuwanie.
